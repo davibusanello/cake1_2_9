@@ -257,7 +257,6 @@ class ShellDispatcher {
 			Configure::buildPaths(array());
 		}
 
-		Configure::write('debug', 1);
 		return true;
 	}
 /**
@@ -392,7 +391,7 @@ class ShellDispatcher {
 			$printOptions = '(' . implode('/', $options) . ')';
 		}
 
-		if ($default == null) {
+		if ($default === null) {
 			$this->stdout($prompt . " $printOptions \n" . '> ', false);
 		} else {
 			$this->stdout($prompt . " $printOptions \n" . "[$default] > ", false);

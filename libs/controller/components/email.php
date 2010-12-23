@@ -94,6 +94,15 @@ class EmailComponent extends Object{
  */
 	var $bcc = array();
 /**
+ * The date to put in the Date: header.  This should be a date
+ * conformant with the RFC2822 standard.  Leave null, to have
+ * today's date generated.
+ *
+ * @var string
+ */
+	var $date = null;
+
+/**
  * The subject of the email
  *
  * @var string
@@ -138,6 +147,19 @@ class EmailComponent extends Object{
  * @access public
  */
 	var $lineLength = 70;
+
+/**
+ * Line feed character(s) to be used when sending using mail() function
+ * If null PHP_EOL is used.
+ * RFC2822 requires it to be CRLF but some Unix
+ * mail transfer agents replace LF by CRLF automatically
+ * (which leads to doubling CR if CRLF is used).
+ *
+ * @var string
+ * @access public
+ */
+	var $lineFeed = null;
+
 /**
  * @deprecated see lineLength
  */
@@ -345,6 +367,7 @@ class EmailComponent extends Object{
 		$this->bcc = array();
 		$this->subject = null;
 		$this->additionalParams = null;
+		$this->date = null;
 		$this->smtpError = null;
 		$this->attachments = array();
 		$this->__header = array();
@@ -470,6 +493,13 @@ class EmailComponent extends Object{
 		if ($this->delivery == 'smtp') {
 			$this->__header[] = 'Subject: ' . $this->__encode($this->subject);
 		}
+
+		$date = $this->date;
+		if ($date == false) {
+			$date = date(DATE_RFC2822);
+		}
+		$this->__header[] = 'Date: ' . $date;
+
 		$this->__header[] = 'X-Mailer: ' . $this->xMailer;
 
 		if (!empty($this->headers)) {
@@ -617,18 +647,20 @@ class EmailComponent extends Object{
  * @access private
  */
 	function __formatAddress($string, $smtp = false) {
-		if (strpos($string, '<') !== false) {
-			$value = explode('<', $string);
-			if ($smtp) {
-				$string = '<' . $value[1];
-			} else {
-				$string = $this->__encode($value[0]) . ' <' . $value[1];
-			}
+		$hasAlias = preg_match('/((.*)\s)?<(.+)>/', $string, $matches);
+		if ($smtp && $hasAlias) {
+			return $this->__strip('<' .  $matches[3] . '>');
+		} elseif ($smtp) {
+			return $this->__strip('<' . $string . '>');
+		}
+		if ($hasAlias && !empty($matches[2])) {
+			return $this->__strip($matches[2] . ' <' . $matches[3] . '>');
 		}
 		return $this->__strip($string);
 	}
 /**
- * Remove certain elements (such as bcc:, to:, %0a) from given value
+ * Remove certain elements (such as bcc:, to:, %0a) from given value.
+ * Helps prevent header injection / mainipulation on user content.
  *
  * @param string $value Value to strip
  * @param boolean $message Set to true to indicate main message content
@@ -655,8 +687,13 @@ class EmailComponent extends Object{
  * @access private
  */
 	function __mail() {
-		$header = implode("\n", $this->__header);
-		$message = implode("\n", $this->__message);
+		if ($this->lineFeed === null) {
+			$lineFeed = PHP_EOL;
+		} else {
+			$lineFeed = $this->lineFeed;
+		}
+		$header = implode($lineFeed, $this->__header);
+		$message = implode($lineFeed, $this->__message);
 		if (ini_get('safe_mode')) {
 			return @mail($this->to, $this->__encode($this->subject), $message, $header);
 		}

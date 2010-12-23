@@ -399,7 +399,7 @@ class Controller extends Object {
 							$this->{$var} = Set::merge($app, $normal);
 						}
 					} else {
-						$this->{$var} = Set::merge($this->{$var}, array_diff($appVars[$var], $this->{$var}));
+						$this->{$var} = array_merge($this->{$var}, array_diff($appVars[$var], $this->{$var}));
 					}
 				}
 			}
@@ -423,7 +423,7 @@ class Controller extends Object {
 							$this->{$var} = Set::merge($app, $normal);
 						}
 					} else {
-						$this->{$var} = Set::merge($this->{$var}, array_diff($appVars[$var], $this->{$var}));
+						$this->{$var} = array_merge($this->{$var}, array_diff($appVars[$var], $this->{$var}));
 					}
 				}
 			}
@@ -742,8 +742,11 @@ class Controller extends Object {
 
 		$errors = array();
 		foreach ($objects as $object) {
-			$this->{$object->alias}->set($object->data);
-			$errors = array_merge($errors, $this->{$object->alias}->invalidFields());
+			if (isset($this->{$object->alias})) {
+				$object =& $this->{$object->alias};
+			}
+			$object->set($object->data);
+			$errors = array_merge($errors, $object->invalidFields());
 		}
 
 		return $this->validationErrors = (!empty($errors) ? $errors : false);
